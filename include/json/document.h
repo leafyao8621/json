@@ -15,6 +15,7 @@ typedef enum JSONNodeType {
 
 typedef struct JSONNode *JSONNodePtr;
 DEF_DARRAY(JSONNodePtr)
+DEF_HASHMAP(String, JSONNodePtr)
 
 typedef struct JSONNode {
     bool is_null;
@@ -23,7 +24,12 @@ typedef struct JSONNode {
         double number;
         String str;
         DArrayJSONNodePtr array;
+        HashMapStringJSONNodePtr object;
     } data;
 } JSONNode;
+
+typedef struct JSONDocument {
+    JSONNode root;
+} JSONDocument;
 
 #endif
