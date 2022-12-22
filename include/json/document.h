@@ -4,7 +4,9 @@
 #include <containers/darray.h>
 #include <containers/hashmap.h>
 
-typedef char *String;
+typedef char Char;
+DEF_DARRAY(Char)
+typedef DArrayChar String;
 
 typedef enum JSONNodeType {
     NUMBER,
