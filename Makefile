@@ -13,7 +13,7 @@ $(LIB): $(OBJ)
 	cp src/document/document.h include/json
 
 $(BIN): $(LIB)
-	$(CC) src/test.c -o $(BIN) -lcontainers -Llib -ljson -Iinclude -Wl,-rpath,lib
+	$(CC) src/test.c -o $(BIN) -Llib -ljson -lcontainers -Iinclude -Wl,-rpath,lib
 
 .PHONY: clean install
 clean:
