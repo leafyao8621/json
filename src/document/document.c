@@ -18,6 +18,29 @@ size_t hash_str(String *a) {
 DEF_DARRAY(String)
 DEF_DARRAY_FUNCTIONS(String)
 
+typedef enum State {
+    ROOT,
+    ARRAY_ELEMENT,
+    KEY,
+    VALUE
+} State;
+
+DEF_DARRAY(State)
+DEF_DARRAY_FUNCTIONS(State)
+
 struct Parser {
     DArrayString buf_stack;
+    DArrayState state_stack;
 };
+
+int Parser_initialize(struct Parser *parser) {
+    int ret = DArrayString_initialize(&parser->buf_stack, 10);
+    if (ret) {
+        return ret;
+    }
+    ret = DArrayState_initialize(&parser->state_stack, 10);
+    if (ret) {
+        return ret;
+    }
+    return 0;
+}
