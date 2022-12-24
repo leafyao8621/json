@@ -11,6 +11,7 @@ CFLAGS = -Wall -Wextra -Werror -pedantic -fPIC
 $(LIB): $(OBJ)
 	$(CC) $(OBJ) -shared -o $(LIB)
 	cp src/document/document.h include/json
+	cp src/util/errcode.h include/json
 
 $(BIN): $(LIB)
 	$(CC) src/test.c -o $(BIN) -Llib -ljson -lcontainers -Iinclude -Wl,-rpath,lib

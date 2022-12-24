@@ -31,6 +31,7 @@ DEF_DARRAY_FUNCTIONS(State)
 struct Parser {
     DArrayString buf_stack;
     DArrayState state_stack;
+    DArrayJSONNodePtr current_node_stack;
 };
 
 int Parser_initialize(struct Parser *parser) {
@@ -39,6 +40,10 @@ int Parser_initialize(struct Parser *parser) {
         return ret;
     }
     ret = DArrayState_initialize(&parser->state_stack, 10);
+    if (ret) {
+        return ret;
+    }
+    ret = DArrayJSONNodePtr_initialize(&parser->current_node_stack, 10);
     if (ret) {
         return ret;
     }
