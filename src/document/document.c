@@ -53,8 +53,9 @@ int Parser_initialize(struct Parser *parser) {
 
 int Parser_finalize(struct Parser *parser) {
     if (parser->buf_stack.size) {
-        for (size_t i = 0; i < parser->buf_stack.size; ++i) {
-            DArrayChar_finalize(parser->buf_stack.data + i);
+        String *iter = parser->buf_stack.data;
+        for (size_t i = 0; i < parser->buf_stack.size; ++i, ++iter) {
+            DArrayChar_finalize(iter);
         }
     }
     DArrayString_finalize(&parser->buf_stack);
