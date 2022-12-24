@@ -1,6 +1,9 @@
 #include <stdio.h>
 
 #include <json/document.h>
+#include <json/errcode.h>
+
+#define REPORT printf("%d %s\n", ret, json_errcode_lookup[ret]);
 
 void read_file(char *fn, String *buf) {
     char in_buf[1000];
@@ -19,7 +22,9 @@ int main(void) {
     String buf;
     DArrayChar_initialize(&buf, 1001);
     read_file("data/a.json", &buf);
-    printf("%s", buf.data);
+    JSONDocument document;
+    int ret = JSONDocument_parse(&document, buf.data);
+    REPORT
     DArrayChar_finalize(&buf);
     return 0;
 }

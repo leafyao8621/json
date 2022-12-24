@@ -2,6 +2,7 @@
 #include <containers/hash.h>
 
 #include "document.h"
+#include "../util/errcode.h"
 
 DEF_DARRAY_FUNCTIONS(Char)
 DEF_DARRAY_FUNCTIONS(JSONNodePtr)
@@ -48,4 +49,34 @@ int Parser_initialize(struct Parser *parser) {
         return ret;
     }
     return 0;
+}
+
+int Parser_finalize(struct Parser *parser) {
+    if (parser->buf_stack.size) {
+        for (size_t i = 0; i < parser->buf_stack.size; ++i) {
+            DArrayChar_finalize(parser->buf_stack.data + i);
+        }
+    }
+    DArrayString_finalize(&parser->buf_stack);
+    DArrayState_finalize(&parser->state_stack);
+    if (parser->current_node_stack.size) {
+        for (size_t i = 0; i < parser->current_node_stack.size; ++i) {
+            free(parser->current_node_stack.data + i);
+        }
+    }
+    DArrayJSONNodePtr_finalize(&parser->current_node_stack);
+    return 0;
+}
+
+int JSONDocument_parse(JSONDocument *document, char *str) {
+    if (!document || !str) {
+        return JSON_ERR_NULL_PTR;
+    }
+    struct Parser parser;
+    int ret = Parser_initialize(&parser);
+    if (ret) {
+        return JSON_ERR_PARSER_INITIALIZE;
+    }
+    Parser_finalize(&parser);
+    return JSON_ERR_OK;
 }
