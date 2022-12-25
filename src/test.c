@@ -30,6 +30,7 @@ int main(void) {
     ret = JSONDocument_serialize(&document, &out, false);
     REPORT
     puts(out.data);
+    DArrayChar_finalize(&out);
     JSONDocument_finalize(&document);
     return 0;
 }
