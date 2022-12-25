@@ -3,7 +3,25 @@
 #include <json/document.h>
 #include <json/errcode.h>
 
-#define REPORT printf("%d %s\n", ret, json_errcode_lookup[ret]);
+#define TEST(fn)\
+String buf_##fn, out_##fn;\
+DArrayChar_initialize(&buf_##fn, 1001);\
+DArrayChar_initialize(&out_##fn, 1001);\
+puts("data/"#fn".json");\
+read_file("data/"#fn".json", &buf_##fn);\
+JSONDocument document_##fn;\
+ret = JSONDocument_parse(&document_##fn, buf_##fn.data);\
+printf("%d %s\n", ret, json_errcode_lookup[ret]);\
+DArrayChar_finalize(&buf_##fn);\
+if (!ret) {\
+    ret = JSONDocument_serialize(&document_##fn, &out_##fn, false);\
+    printf("%d %s\n", ret, json_errcode_lookup[ret]);\
+    if (!ret) {\
+        puts(out_##fn.data);\
+    }\
+}\
+DArrayChar_finalize(&out_##fn);\
+JSONDocument_finalize(&document_##fn);
 
 void read_file(char *fn, String *buf) {
     char in_buf[1000];
@@ -19,18 +37,8 @@ void read_file(char *fn, String *buf) {
 }
 
 int main(void) {
-    String buf, out;
-    DArrayChar_initialize(&buf, 1001);
-    DArrayChar_initialize(&out, 1001);
-    read_file("data/a.json", &buf);
-    JSONDocument document;
-    int ret = JSONDocument_parse(&document, buf.data);
-    REPORT
-    DArrayChar_finalize(&buf);
-    ret = JSONDocument_serialize(&document, &out, false);
-    REPORT
-    puts(out.data);
-    DArrayChar_finalize(&out);
-    JSONDocument_finalize(&document);
+    int ret = JSON_ERR_OK;
+    TEST(null)
+    TEST(str)
     return 0;
 }

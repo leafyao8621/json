@@ -80,6 +80,35 @@ int Parser_finalize(struct Parser *parser) {
     return 0;
 }
 
+int handle_null(JSONDocument *document, struct Parser *parser, char **iter) {
+    int ret = JSON_ERR_OK;
+    if (parser->state_stack.data[parser->state_stack.size - 1] == ROOT) {
+        if (document->root) {
+            return JSON_ERR_ILL_FORMATED_DOCUMENT;
+        }
+        document->root = malloc(sizeof(JSONNode));
+        ret =
+            DArrayJSONNodePtr_push_back(
+                &parser->current_node_stack,
+                &document->root
+            );
+        if (ret) {
+            return JSON_ERR_PARSING;
+        }
+    }
+    if (memcmp(*iter, "null", 4)) {
+        return JSON_ERR_ILL_FORMATED_DOCUMENT;
+    }
+    if (ret) {
+        return JSON_ERR_PARSING;
+    }
+    *iter += 3;
+    parser
+        ->current_node_stack.data[parser->current_node_stack.size - 1]
+        ->is_null = true;
+    return 0;
+}
+
 int handle_str(JSONDocument *document, struct Parser *parser, char **iter) {
     int ret = JSON_ERR_OK;
     if (parser->state_stack.data[parser->state_stack.size - 1] == ROOT) {
@@ -161,6 +190,12 @@ int JSONDocument_parse(JSONDocument *document, char *str) {
     char *iter = str;
     for (; *iter && *iter != ' ' && *iter != '\t' && *iter != '\n'; ++iter) {
         switch (*iter) {
+        case 'n':
+            ret = handle_null(document, &parser, &iter);
+            if (ret) {
+                return ret;
+            }
+            break;
         case '"':
             ret = handle_str(document, &parser, &iter);
             if (ret) {
@@ -206,6 +241,7 @@ int JSONDocument_serialize(JSONDocument *document, String *buf, bool compact) {
     if (!document->root) {
         return JSON_ERR_NOT_INITIALIZED;
     }
+    compact = compact;
     int ret = 0;
     if (document->root->is_null) {
         ret = DArrayChar_push_back_batch(buf, "null", 5);
@@ -234,13 +270,6 @@ int JSONDocument_serialize(JSONDocument *document, String *buf, bool compact) {
         ret = DArrayChar_push_back(buf, &chr);
         if (ret) {
             return JSON_ERR_SERIALIZE;
-        }
-        if (!compact) {
-            chr = '\n';
-            ret = DArrayChar_push_back(buf, &chr);
-            if (ret) {
-                return JSON_ERR_SERIALIZE;
-            }
         }
         chr = 0;
         ret = DArrayChar_push_back(buf, &chr);
