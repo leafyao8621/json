@@ -19,12 +19,17 @@ void read_file(char *fn, String *buf) {
 }
 
 int main(void) {
-    String buf;
+    String buf, out;
     DArrayChar_initialize(&buf, 1001);
+    DArrayChar_initialize(&out, 1001);
     read_file("data/a.json", &buf);
     JSONDocument document;
     int ret = JSONDocument_parse(&document, buf.data);
     REPORT
     DArrayChar_finalize(&buf);
+    ret = JSONDocument_serialize(&document, &out, false);
+    REPORT
+    puts(out.data);
+    JSONDocument_finalize(&document);
     return 0;
 }

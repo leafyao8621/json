@@ -31,10 +31,11 @@ typedef struct JSONNode {
 } JSONNode;
 
 typedef struct JSONDocument {
-    JSONNode root;
+    JSONNodePtr root;
 } JSONDocument;
 
 int JSONDocument_parse(JSONDocument *document, char *str);
 int JSONDocument_finalize(JSONDocument *document);
+int JSONDocument_serialize(JSONDocument *document, String *buf, bool compact);
 
 #endif

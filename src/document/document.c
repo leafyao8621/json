@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include <containers/eq.h>
 #include <containers/hash.h>
 
@@ -48,6 +50,20 @@ int Parser_initialize(struct Parser *parser) {
     if (ret) {
         return ret;
     }
+    String buf;
+    ret = DArrayChar_initialize(&buf, 100);
+    if (ret) {
+        return ret;
+    }
+    ret = DArrayString_push_back(&parser->buf_stack, &buf);
+    if (ret) {
+        return ret;
+    }
+    enum State root = ROOT;
+    ret = DArrayState_push_back(&parser->state_stack, &root);
+    if (ret) {
+        return ret;
+    }
     return 0;
 }
 
@@ -60,12 +76,75 @@ int Parser_finalize(struct Parser *parser) {
     }
     DArrayString_finalize(&parser->buf_stack);
     DArrayState_finalize(&parser->state_stack);
-    if (parser->current_node_stack.size) {
-        for (size_t i = 0; i < parser->current_node_stack.size; ++i) {
-            free(parser->current_node_stack.data + i);
+    DArrayJSONNodePtr_finalize(&parser->current_node_stack);
+    return 0;
+}
+
+int handle_str(JSONDocument *document, struct Parser *parser, char **iter) {
+    int ret = JSON_ERR_OK;
+    if (parser->state_stack.data[parser->state_stack.size - 1] == ROOT) {
+        if (document->root) {
+            return JSON_ERR_ILL_FORMATED_DOCUMENT;
+        }
+        document->root = malloc(sizeof(JSONNode));
+        ret =
+            DArrayJSONNodePtr_push_back(
+                &parser->current_node_stack,
+                &document->root
+            );
+        if (ret) {
+            return JSON_ERR_PARSING;
         }
     }
-    DArrayJSONNodePtr_finalize(&parser->current_node_stack);
+    for (++(*iter); **iter && **iter != '"'; ++(*iter)) {
+        ret =
+            DArrayChar_push_back(
+                parser->buf_stack.data + parser->buf_stack.size - 1,
+                *iter
+            );
+        if (ret) {
+            return JSON_ERR_PARSING;
+        }
+    }
+    if (!**iter) {
+        return JSON_ERR_ILL_FORMATED_DOCUMENT;
+    }
+    char zero = 0;
+    ret =
+        DArrayChar_push_back(
+            parser->buf_stack.data + parser->buf_stack.size - 1,
+            &zero
+        );
+    if (ret) {
+        return JSON_ERR_PARSING;
+    }
+    parser
+        ->current_node_stack.data[parser->current_node_stack.size - 1]
+        ->is_null = false;
+    parser
+        ->current_node_stack.data[parser->current_node_stack.size - 1]
+        ->type = STRING;
+    String tgt;
+    ret =
+        DArrayChar_initialize(
+            &tgt,
+            parser->buf_stack.data[parser->buf_stack.size - 1].size
+        );
+    if (ret) {
+        return JSON_ERR_PARSING;
+    }
+    ret =
+        DArrayChar_push_back_batch(
+            &tgt,
+            parser->buf_stack.data[parser->buf_stack.size - 1].data,
+            parser->buf_stack.data[parser->buf_stack.size - 1].size
+        );
+    if (ret) {
+        return JSON_ERR_PARSING;
+    }
+    parser
+        ->current_node_stack.data[parser->current_node_stack.size - 1]
+        ->data.str = tgt;
     return 0;
 }
 
@@ -78,6 +157,103 @@ int JSONDocument_parse(JSONDocument *document, char *str) {
     if (ret) {
         return JSON_ERR_PARSER_INITIALIZE;
     }
+    document->root = 0;
+    char *iter = str;
+    for (; *iter && *iter != ' ' && *iter != '\t' && *iter != '\n'; ++iter) {
+        switch (*iter) {
+        case '"':
+            ret = handle_str(document, &parser, &iter);
+            if (ret) {
+                return ret;
+            }
+            break;
+        }
+    }
     Parser_finalize(&parser);
+    return JSON_ERR_OK;
+}
+
+int JSONDocument_finalize(JSONDocument *document) {
+    if (!document) {
+        return JSON_ERR_NULL_PTR;
+    }
+    if (!document->root) {
+        return JSON_ERR_OK;
+    }
+    if (!document->root->is_null) {
+        switch (document->root->type) {
+        case STRING:
+            DArrayChar_finalize(&document->root->data.str);
+            break;
+        case NUMBER:
+            break;
+        case ARRAY:
+            break;
+        case OBJECT:
+            break;
+        }
+    }
+    if (document->root) {
+        free(document->root);
+    }
+    return JSON_ERR_OK;
+}
+
+int JSONDocument_serialize(JSONDocument *document, String *buf, bool compact) {
+    if (!document || !buf) {
+        return JSON_ERR_NULL_PTR;
+    }
+    if (!document->root) {
+        return JSON_ERR_NOT_INITIALIZED;
+    }
+    int ret = 0;
+    if (document->root->is_null) {
+        ret = DArrayChar_push_back_batch(buf, "null", 5);
+        if (ret) {
+            return JSON_ERR_SERIALIZE;
+        }
+        return JSON_ERR_OK;
+    }
+    char chr = 0;
+    switch (document->root->type) {
+    case STRING:
+        chr = '"';
+        ret = DArrayChar_push_back(buf, &chr);
+        if (ret) {
+            return JSON_ERR_SERIALIZE;
+        }
+        ret =
+            DArrayChar_push_back_batch(
+                buf,
+                document->root->data.str.data,
+                document->root->data.str.size - 1
+            );
+        if (ret) {
+            return JSON_ERR_SERIALIZE;
+        }
+        ret = DArrayChar_push_back(buf, &chr);
+        if (ret) {
+            return JSON_ERR_SERIALIZE;
+        }
+        if (!compact) {
+            chr = '\n';
+            ret = DArrayChar_push_back(buf, &chr);
+            if (ret) {
+                return JSON_ERR_SERIALIZE;
+            }
+        }
+        chr = 0;
+        ret = DArrayChar_push_back(buf, &chr);
+        if (ret) {
+            return ret;
+        }
+        break;
+    case NUMBER:
+        break;
+    case ARRAY:
+        break;
+    case OBJECT:
+        break;
+    }
     return JSON_ERR_OK;
 }

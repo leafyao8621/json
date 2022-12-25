@@ -22,5 +22,5 @@ clean:
 	@rm $(LIB)
 	@rm $(BIN)
 install:
-	@cp -r include/http_server ~/.local/include
+	@cp -r include/json ~/.local/include
 	@cp $(LIB) ~/.local/lib
