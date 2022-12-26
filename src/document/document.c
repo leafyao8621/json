@@ -171,6 +171,7 @@ int handle_str(JSONDocument *document, struct Parser *parser, char **iter) {
     if (ret) {
         return JSON_ERR_PARSING;
     }
+    parser->buf_stack.data[parser->buf_stack.size - 1].size = 0;
     parser
         ->current_node_stack.data[parser->current_node_stack.size - 1]
         ->data.str = tgt;
