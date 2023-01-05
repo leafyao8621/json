@@ -39,6 +39,8 @@ void read_file(char *fn, String *buf) {
 int main(void) {
     int ret = JSON_ERR_OK;
     TEST(null)
-    TEST(str)
+    TEST(str1)
+    TEST(str2)
+    TEST(str3)
     return 0;
 }

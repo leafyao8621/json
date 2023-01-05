@@ -126,6 +126,40 @@ int handle_str(JSONDocument *document, struct Parser *parser, char **iter) {
         }
     }
     for (++(*iter); **iter && **iter != '"'; ++(*iter)) {
+        if (**iter == '\n') {
+            return JSON_ERR_PARSING;
+        }
+        if (**iter == '\\') {
+            ++(*iter);
+            char chr;
+            switch (**iter) {
+            case 't':
+                chr = '\t';
+                ret =
+                    DArrayChar_push_back(
+                        parser->buf_stack.data + parser->buf_stack.size - 1,
+                        &chr
+                    );
+                if (ret) {
+                    return JSON_ERR_PARSING;
+                }
+                break;
+            case 'n':
+                chr = '\n';
+                ret =
+                    DArrayChar_push_back(
+                        parser->buf_stack.data + parser->buf_stack.size - 1,
+                        &chr
+                    );
+                if (ret) {
+                    return JSON_ERR_PARSING;
+                }
+                break;
+            default:
+                return JSON_ERR_PARSING;
+            }
+            continue;
+        }
         ret =
             DArrayChar_push_back(
                 parser->buf_stack.data + parser->buf_stack.size - 1,
@@ -193,20 +227,14 @@ int JSONDocument_parse(JSONDocument *document, char *str) {
         switch (*iter) {
         case 'n':
             ret = handle_null(document, &parser, &iter);
-            if (ret) {
-                return ret;
-            }
             break;
         case '"':
             ret = handle_str(document, &parser, &iter);
-            if (ret) {
-                return ret;
-            }
             break;
         }
     }
     Parser_finalize(&parser);
-    return JSON_ERR_OK;
+    return ret;
 }
 
 int JSONDocument_finalize(JSONDocument *document) {
@@ -235,6 +263,64 @@ int JSONDocument_finalize(JSONDocument *document) {
     return JSON_ERR_OK;
 }
 
+int null_serialize(String *buf) {
+    return DArrayChar_push_back_batch(buf, "null", 5);
+}
+
+int str_serialize(JSONNodePtr node, String *buf) {
+    char chr = '"';
+    int ret = DArrayChar_push_back(buf, &chr);
+    if (ret) {
+        return JSON_ERR_SERIALIZE;
+    }
+    char *iter = node->data.str.data;
+    for (size_t i = 0; i < node->data.str.size - 1; ++i, ++iter) {
+        switch (*iter) {
+        case '\t':
+            ret =
+                DArrayChar_push_back_batch(
+                    buf,
+                    "\\t",
+                    2
+                );
+            if (ret) {
+                return JSON_ERR_SERIALIZE;
+            }
+            break;
+        case '\n':
+            ret =
+                DArrayChar_push_back_batch(
+                    buf,
+                    "\\n",
+                    2
+                );
+            if (ret) {
+                return JSON_ERR_SERIALIZE;
+            }
+            break;
+        default:
+            ret =
+                DArrayChar_push_back(
+                    buf,
+                    iter
+                );
+            if (ret) {
+                return JSON_ERR_SERIALIZE;
+            }
+        }
+    }
+    ret = DArrayChar_push_back(buf, &chr);
+    if (ret) {
+        return JSON_ERR_SERIALIZE;
+    }
+    chr = 0;
+    ret = DArrayChar_push_back(buf, &chr);
+    if (ret) {
+        return JSON_ERR_SERIALIZE;
+    }
+    return JSON_ERR_OK;
+}
+
 int JSONDocument_serialize(JSONDocument *document, String *buf, bool compact) {
     if (!document || !buf) {
         return JSON_ERR_NULL_PTR;
@@ -245,35 +331,11 @@ int JSONDocument_serialize(JSONDocument *document, String *buf, bool compact) {
     compact = compact;
     int ret = 0;
     if (document->root->is_null) {
-        ret = DArrayChar_push_back_batch(buf, "null", 5);
-        if (ret) {
-            return JSON_ERR_SERIALIZE;
-        }
-        return JSON_ERR_OK;
+        return null_serialize(buf);
     }
-    char chr = 0;
     switch (document->root->type) {
     case STRING:
-        chr = '"';
-        ret = DArrayChar_push_back(buf, &chr);
-        if (ret) {
-            return JSON_ERR_SERIALIZE;
-        }
-        ret =
-            DArrayChar_push_back_batch(
-                buf,
-                document->root->data.str.data,
-                document->root->data.str.size - 1
-            );
-        if (ret) {
-            return JSON_ERR_SERIALIZE;
-        }
-        ret = DArrayChar_push_back(buf, &chr);
-        if (ret) {
-            return JSON_ERR_SERIALIZE;
-        }
-        chr = 0;
-        ret = DArrayChar_push_back(buf, &chr);
+        ret = str_serialize(document->root, buf);
         if (ret) {
             return ret;
         }
