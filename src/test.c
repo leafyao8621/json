@@ -42,5 +42,11 @@ int main(void) {
     TEST(str1)
     TEST(str2)
     TEST(str3)
+    TEST(number1)
+    TEST(number2)
+    TEST(number3)
+    TEST(number4)
+    TEST(number5)
+    TEST(number6)
     return 0;
 }

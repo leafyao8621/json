@@ -51,7 +51,7 @@ int handle_str(JSONNodePtr node, String *buf, char **iter) {
     int ret = JSON_ERR_OK;
     for (++(*iter); **iter && **iter != '"'; ++(*iter)) {
         if (**iter == '\n') {
-            return JSON_ERR_PARSING;
+            return JSON_ERR_ILL_FORMATED_DOCUMENT;
         }
         if (**iter == '\\') {
             ++(*iter);
@@ -130,6 +130,36 @@ int handle_str(JSONNodePtr node, String *buf, char **iter) {
     return 0;
 }
 
+int handle_num(JSONNodePtr node, String *buf, char **iter) {
+    int ret = JSON_ERR_OK;
+    for (
+        ;
+        **iter &&
+        (
+            (**iter >= '0' && **iter <= '9') ||
+            (**iter == '.') ||
+            (**iter == 'E') ||
+            (**iter == 'e') ||
+            (**iter == '+') ||
+            (**iter == '-')
+        );
+        ++(*iter)) {
+        ret = DArrayChar_push_back(buf, *iter);
+        if (ret) {
+            return JSON_ERR_PARSING;
+        }
+    }
+    char zero = 0;
+    ret = DArrayChar_push_back(buf, &zero);
+    if (ret) {
+        return JSON_ERR_PARSING;
+    }
+    node->is_null = false;
+    node->type = NUMBER;
+    node->data.number = atof(buf->data);
+    return 0;
+}
+
 int JSONDocument_parse(JSONDocument *document, char *str) {
     if (!document || !str) {
         return JSON_ERR_NULL_PTR;
@@ -145,17 +175,46 @@ int JSONDocument_parse(JSONDocument *document, char *str) {
         return ret;
     }
     char *iter = str;
+    bool initialized = false;
     for (; *iter && *iter != ' ' && *iter != '\t' && *iter != '\n'; ++iter) {
         switch (*iter) {
         case 'n':
+            if (initialized) {
+                DArrayChar_finalize(&buf);
+                return JSON_ERR_ILL_FORMATED_DOCUMENT;
+            }
             ret = handle_null(&iter);
             break;
         case '"':
+            if (initialized) {
+                DArrayChar_finalize(&buf);
+                return JSON_ERR_ILL_FORMATED_DOCUMENT;
+            }
             ret = handle_str(document->root, &buf, &iter);
             break;
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+        case '-':
+            if (initialized) {
+                DArrayChar_finalize(&buf);
+                return JSON_ERR_ILL_FORMATED_DOCUMENT;
+            }
+            ret = handle_num(document->root, &buf, &iter);
+            break;
+        default:
+            return JSON_ERR_ILL_FORMATED_DOCUMENT;
         }
+        initialized = true;
     }
-    DArrayChar_finalize(&buf);;
+    DArrayChar_finalize(&buf);
     return ret;
 }
 
@@ -243,6 +302,22 @@ int str_serialize(JSONNodePtr node, String *buf) {
     return JSON_ERR_OK;
 }
 
+int num_serialize(JSONNodePtr node, String *buf) {
+    char tmp[100];
+    snprintf(tmp, 99, "%lf", node->data.number);
+    size_t len = strlen(tmp);
+    int ret = DArrayChar_push_back_batch(buf, tmp, len);
+    if (ret) {
+        return JSON_ERR_SERIALIZE;
+    }
+    char zero = 0;
+    ret = DArrayChar_push_back(buf, &zero);
+    if (ret) {
+        return JSON_ERR_SERIALIZE;
+    }
+    return JSON_ERR_OK;
+}
+
 int JSONDocument_serialize(JSONDocument *document, String *buf, bool compact) {
     if (!document || !buf) {
         return JSON_ERR_NULL_PTR;
@@ -263,6 +338,7 @@ int JSONDocument_serialize(JSONDocument *document, String *buf, bool compact) {
         }
         break;
     case NUMBER:
+        ret = num_serialize(document->root, buf);
         break;
     case ARRAY:
         break;
