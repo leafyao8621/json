@@ -34,6 +34,7 @@ typedef struct JSONDocument {
     JSONNodePtr root;
 } JSONDocument;
 
+int JSONNodePtr_initialize(JSONNodePtr *node);
 int JSONDocument_parse(JSONDocument *document, char *str);
 int JSONDocument_finalize(JSONDocument *document);
 int JSONDocument_serialize(JSONDocument *document, String *buf, bool compact);

@@ -22,80 +22,21 @@ DEF_DARRAY(String)
 DEF_DARRAY_FUNCTIONS(String)
 
 typedef enum State {
-    ROOT,
-    ARRAY_ELEMENT,
     KEY,
     VALUE
 } State;
 
-DEF_DARRAY(State)
-DEF_DARRAY_FUNCTIONS(State)
-
-struct Parser {
-    DArrayString buf_stack;
-    DArrayState state_stack;
-    DArrayJSONNodePtr current_node_stack;
-};
-
-int Parser_initialize(struct Parser *parser) {
-    int ret = DArrayString_initialize(&parser->buf_stack, 10);
-    if (ret) {
-        return ret;
+int JSONNodePtr_initialize(JSONNodePtr *node) {
+    *node = malloc(sizeof(JSONNode));
+    if (!*node) {
+        return JSON_ERR_NODE_INITIALIZE;
     }
-    ret = DArrayState_initialize(&parser->state_stack, 10);
-    if (ret) {
-        return ret;
-    }
-    ret = DArrayJSONNodePtr_initialize(&parser->current_node_stack, 10);
-    if (ret) {
-        return ret;
-    }
-    String buf;
-    ret = DArrayChar_initialize(&buf, 100);
-    if (ret) {
-        return ret;
-    }
-    ret = DArrayString_push_back(&parser->buf_stack, &buf);
-    if (ret) {
-        return ret;
-    }
-    enum State root = ROOT;
-    ret = DArrayState_push_back(&parser->state_stack, &root);
-    if (ret) {
-        return ret;
-    }
-    return 0;
+    (*node)->is_null = true;
+    return JSON_ERR_OK;
 }
 
-int Parser_finalize(struct Parser *parser) {
-    if (parser->buf_stack.size) {
-        String *iter = parser->buf_stack.data;
-        for (size_t i = 0; i < parser->buf_stack.size; ++i, ++iter) {
-            DArrayChar_finalize(iter);
-        }
-    }
-    DArrayString_finalize(&parser->buf_stack);
-    DArrayState_finalize(&parser->state_stack);
-    DArrayJSONNodePtr_finalize(&parser->current_node_stack);
-    return 0;
-}
-
-int handle_null(JSONDocument *document, struct Parser *parser, char **iter) {
+int handle_null(char **iter) {
     int ret = JSON_ERR_OK;
-    if (parser->state_stack.data[parser->state_stack.size - 1] == ROOT) {
-        if (document->root) {
-            return JSON_ERR_ILL_FORMATED_DOCUMENT;
-        }
-        document->root = malloc(sizeof(JSONNode));
-        ret =
-            DArrayJSONNodePtr_push_back(
-                &parser->current_node_stack,
-                &document->root
-            );
-        if (ret) {
-            return JSON_ERR_PARSING;
-        }
-    }
     if (memcmp(*iter, "null", 4)) {
         return JSON_ERR_ILL_FORMATED_DOCUMENT;
     }
@@ -103,28 +44,11 @@ int handle_null(JSONDocument *document, struct Parser *parser, char **iter) {
         return JSON_ERR_PARSING;
     }
     *iter += 3;
-    parser
-        ->current_node_stack.data[parser->current_node_stack.size - 1]
-        ->is_null = true;
     return 0;
 }
 
-int handle_str(JSONDocument *document, struct Parser *parser, char **iter) {
+int handle_str(JSONNodePtr node, String *buf, char **iter) {
     int ret = JSON_ERR_OK;
-    if (parser->state_stack.data[parser->state_stack.size - 1] == ROOT) {
-        if (document->root) {
-            return JSON_ERR_ILL_FORMATED_DOCUMENT;
-        }
-        document->root = malloc(sizeof(JSONNode));
-        ret =
-            DArrayJSONNodePtr_push_back(
-                &parser->current_node_stack,
-                &document->root
-            );
-        if (ret) {
-            return JSON_ERR_PARSING;
-        }
-    }
     for (++(*iter); **iter && **iter != '"'; ++(*iter)) {
         if (**iter == '\n') {
             return JSON_ERR_PARSING;
@@ -137,7 +61,7 @@ int handle_str(JSONDocument *document, struct Parser *parser, char **iter) {
                 chr = '\t';
                 ret =
                     DArrayChar_push_back(
-                        parser->buf_stack.data + parser->buf_stack.size - 1,
+                        buf,
                         &chr
                     );
                 if (ret) {
@@ -148,7 +72,7 @@ int handle_str(JSONDocument *document, struct Parser *parser, char **iter) {
                 chr = '\n';
                 ret =
                     DArrayChar_push_back(
-                        parser->buf_stack.data + parser->buf_stack.size - 1,
+                        buf,
                         &chr
                     );
                 if (ret) {
@@ -162,7 +86,7 @@ int handle_str(JSONDocument *document, struct Parser *parser, char **iter) {
         }
         ret =
             DArrayChar_push_back(
-                parser->buf_stack.data + parser->buf_stack.size - 1,
+                buf,
                 *iter
             );
         if (ret) {
@@ -175,23 +99,19 @@ int handle_str(JSONDocument *document, struct Parser *parser, char **iter) {
     char zero = 0;
     ret =
         DArrayChar_push_back(
-            parser->buf_stack.data + parser->buf_stack.size - 1,
+            buf,
             &zero
         );
     if (ret) {
         return JSON_ERR_PARSING;
     }
-    parser
-        ->current_node_stack.data[parser->current_node_stack.size - 1]
-        ->is_null = false;
-    parser
-        ->current_node_stack.data[parser->current_node_stack.size - 1]
-        ->type = STRING;
+    node->is_null = false;
+    node->type = STRING;
     String tgt;
     ret =
         DArrayChar_initialize(
             &tgt,
-            parser->buf_stack.data[parser->buf_stack.size - 1].size
+            buf->size
         );
     if (ret) {
         return JSON_ERR_PARSING;
@@ -199,16 +119,14 @@ int handle_str(JSONDocument *document, struct Parser *parser, char **iter) {
     ret =
         DArrayChar_push_back_batch(
             &tgt,
-            parser->buf_stack.data[parser->buf_stack.size - 1].data,
-            parser->buf_stack.data[parser->buf_stack.size - 1].size
+            buf->data,
+            buf->size
         );
     if (ret) {
         return JSON_ERR_PARSING;
     }
-    parser->buf_stack.data[parser->buf_stack.size - 1].size = 0;
-    parser
-        ->current_node_stack.data[parser->current_node_stack.size - 1]
-        ->data.str = tgt;
+    DArrayChar_clear(buf);
+    node->data.str = tgt;
     return 0;
 }
 
@@ -216,24 +134,28 @@ int JSONDocument_parse(JSONDocument *document, char *str) {
     if (!document || !str) {
         return JSON_ERR_NULL_PTR;
     }
-    struct Parser parser;
-    int ret = Parser_initialize(&parser);
+    String buf;
+    int ret = DArrayChar_initialize(&buf, 100);
     if (ret) {
-        return JSON_ERR_PARSER_INITIALIZE;
+        return JSON_ERR_PARSING;
     }
     document->root = 0;
+    ret = JSONNodePtr_initialize(&document->root);
+    if (ret) {
+        return ret;
+    }
     char *iter = str;
     for (; *iter && *iter != ' ' && *iter != '\t' && *iter != '\n'; ++iter) {
         switch (*iter) {
         case 'n':
-            ret = handle_null(document, &parser, &iter);
+            ret = handle_null(&iter);
             break;
         case '"':
-            ret = handle_str(document, &parser, &iter);
+            ret = handle_str(document->root, &buf, &iter);
             break;
         }
     }
-    Parser_finalize(&parser);
+    DArrayChar_finalize(&buf);;
     return ret;
 }
 
