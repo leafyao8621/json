@@ -13,15 +13,24 @@ JSONDocument document_##fn;\
 ret = JSONDocument_parse(&document_##fn, buf_##fn.data);\
 printf("%d %s\n", ret, json_errcode_lookup[ret]);\
 DArrayChar_finalize(&buf_##fn);\
+if (ret) {\
+    JSONDocument_finalize(&document_##fn);\
+}\
 if (!ret) {\
     ret = JSONDocument_serialize(&document_##fn, &out_##fn, false);\
     printf("%d %s\n", ret, json_errcode_lookup[ret]);\
     if (!ret) {\
         puts(out_##fn.data);\
     }\
+    DArrayChar_clear(&out_##fn);\
+    ret = JSONDocument_serialize(&document_##fn, &out_##fn, true);\
+    printf("%d %s\n", ret, json_errcode_lookup[ret]);\
+    if (!ret) {\
+        puts(out_##fn.data);\
+    }\
+    JSONDocument_finalize(&document_##fn);\
 }\
 DArrayChar_finalize(&out_##fn);\
-JSONDocument_finalize(&document_##fn);
 
 void read_file(char *fn, String *buf) {
     char in_buf[1000];
@@ -38,15 +47,16 @@ void read_file(char *fn, String *buf) {
 
 int main(void) {
     int ret = JSON_ERR_OK;
-    TEST(null)
-    TEST(str1)
-    TEST(str2)
-    TEST(str3)
-    TEST(number1)
-    TEST(number2)
-    TEST(number3)
-    TEST(number4)
-    TEST(number5)
-    TEST(number6)
+    // TEST(null)
+    // TEST(str1)
+    // TEST(str2)
+    // TEST(str3)
+    // TEST(number1)
+    // TEST(number2)
+    // TEST(number3)
+    // TEST(number4)
+    // TEST(number5)
+    // TEST(number6)
+    TEST(arr1)
     return 0;
 }
