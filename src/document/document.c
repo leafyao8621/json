@@ -157,6 +157,7 @@ int handle_num(JSONNodePtr node, String *buf, char **iter) {
     node->is_null = false;
     node->type = NUMBER;
     node->data.number = atof(buf->data);
+    DArrayChar_clear(buf);
     return 0;
 }
 
@@ -213,7 +214,7 @@ int handle_array(JSONNodePtr node, char **iter) {
             ret = handle_num(temp, &buf, iter);
             break;
         case '[':
-            ret = handle_array(node, iter);
+            ret = handle_array(temp, iter);
             break;
         default:
             DArrayChar_finalize(&buf);
@@ -386,7 +387,7 @@ int null_serialize(String *buf, size_t offset) {
             return JSON_ERR_SERIALIZE;
         }
     }
-    return DArrayChar_push_back_batch(buf, "null", 5);
+    return DArrayChar_push_back_batch(buf, "null", 4);
 }
 
 int str_serialize(JSONNodePtr node, String *buf, size_t offset) {
@@ -471,7 +472,14 @@ int array_serialize(
     bool compact,
     size_t offset) {
     int ret = 0;
-    char chr = '[';
+    char chr = ' ';
+    for (size_t i = 0; i < offset; ++i) {
+        ret = DArrayChar_push_back(buf, &chr);
+        if (ret) {
+            return JSON_ERR_SERIALIZE;
+        }
+    }
+    chr = '[';
     ret = DArrayChar_push_back(buf, &chr);
     if (ret) {
         return JSON_ERR_SERIALIZE;
@@ -481,13 +489,6 @@ int array_serialize(
         ret = DArrayChar_push_back(buf, &chr);
         if (ret) {
             return JSON_ERR_SERIALIZE;
-        }
-        chr = ' ';
-        for (size_t i = 0; i < offset; ++i) {
-            ret = DArrayChar_push_back(buf, &chr);
-            if (ret) {
-                return JSON_ERR_SERIALIZE;
-            }
         }
     }
     JSONNodePtr *iter = node->data.array.data;
@@ -531,6 +532,13 @@ int array_serialize(
             if (ret) {
                 return JSON_ERR_SERIALIZE;
             }
+        }
+    }
+    chr = ' ';
+    for (size_t i = 0; i < offset; ++i) {
+        ret = DArrayChar_push_back(buf, &chr);
+        if (ret) {
+            return JSON_ERR_SERIALIZE;
         }
     }
     chr = ']';

@@ -47,16 +47,17 @@ void read_file(char *fn, String *buf) {
 
 int main(void) {
     int ret = JSON_ERR_OK;
-    // TEST(null)
-    // TEST(str1)
-    // TEST(str2)
-    // TEST(str3)
-    // TEST(number1)
-    // TEST(number2)
-    // TEST(number3)
-    // TEST(number4)
-    // TEST(number5)
-    // TEST(number6)
+    TEST(null)
+    TEST(str1)
+    TEST(str2)
+    TEST(str3)
+    TEST(number1)
+    TEST(number2)
+    TEST(number3)
+    TEST(number4)
+    TEST(number5)
+    TEST(number6)
     TEST(arr1)
+    TEST(arr2)
     return 0;
 }
