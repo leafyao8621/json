@@ -59,5 +59,6 @@ int main(void) {
     TEST(number6)
     TEST(arr1)
     TEST(arr2)
+    TEST(arr3)
     return 0;
 }

@@ -253,7 +253,7 @@ int handle_array(JSONNodePtr node, char **iter) {
     }
     if (ret) {
         DArrayChar_finalize(&buf);
-        return JSON_ERR_PARSING;
+        return ret;
     }
     if (!**iter) {
         DArrayChar_finalize(&buf);
