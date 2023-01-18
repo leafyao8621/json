@@ -206,7 +206,12 @@ int handle_array(JSONNodePtr node, char **iter) {
         DArrayChar_finalize(&buf);
         return JSON_ERR_PARSING;
     }
+    bool comma_found = true;
     for (; **iter && **iter != ']';) {
+        if (!comma_found) {
+            DArrayChar_finalize(&buf);
+            return JSON_ERR_ILL_FORMATED_DOCUMENT;
+        }
         JSONNodePtr temp;
         ret = JSONNodePtr_initialize(&temp);
         if (ret) {
@@ -247,7 +252,7 @@ int handle_array(JSONNodePtr node, char **iter) {
             free(temp);
             break;
         }
-        bool comma_found = false;
+        comma_found = false;
         for (
             ;
             **iter &&

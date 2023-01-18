@@ -62,5 +62,7 @@ int main(void) {
     TEST(arr3)
     TEST(arr4)
     TEST(arr5)
+    TEST(arr6)
+    TEST(arr7)
     return 0;
 }
