@@ -311,6 +311,7 @@ int handle_array(JSONNodePtr node, char **iter) {
                             array_finalize(temp);
                             break;
                         case OBJECT:
+                            object_finalize(temp);
                             break;
                         }
                     }
@@ -333,6 +334,7 @@ int handle_array(JSONNodePtr node, char **iter) {
                     array_finalize(temp);
                     break;
                 case OBJECT:
+                    object_finalize(temp);
                     break;
                 }
             }
