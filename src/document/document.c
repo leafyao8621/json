@@ -179,7 +179,7 @@ void array_finalize(JSONNodePtr node) {
                 array_finalize(*iter);
                 break;
             case OBJECT:
-                array_finalize(*iter);
+                object_finalize(*iter);
                 break;
             }
         }
