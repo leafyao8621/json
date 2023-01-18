@@ -67,5 +67,6 @@ int main(void) {
     TEST(arr8)
     TEST(obj1)
     TEST(obj2)
+    TEST(obj3)
     return 0;
 }
