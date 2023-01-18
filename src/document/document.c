@@ -433,6 +433,22 @@ int handle_object(JSONNodePtr node, char **iter) {
             DArrayChar_finalize(&key_buf);
             return JSON_ERR_ILL_FORMATED_DOCUMENT;
         }
+        bool key_found = false;
+        ret =
+            HashMapStringJSONNodePtr_find(
+                &node->data.object,
+                &key_buf,
+                &key_found
+            );
+        if (ret) {
+            DArrayChar_finalize(&key_buf);
+            break;
+        }
+        if (key_found) {
+            DArrayChar_finalize(&buf);
+            DArrayChar_finalize(&key_buf);
+            return JSON_ERR_ILL_FORMATED_DOCUMENT;
+        }
         JSONNodePtr *value;
         ret =
             HashMapStringJSONNodePtr_fetch(
