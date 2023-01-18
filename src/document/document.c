@@ -105,28 +105,30 @@ int handle_str(JSONNodePtr node, String *buf, char **iter) {
     if (ret) {
         return JSON_ERR_PARSING;
     }
-    node->is_null = false;
-    node->type = STRING;
-    String tgt;
-    ret =
-        DArrayChar_initialize(
-            &tgt,
-            buf->size
-        );
-    if (ret) {
-        return JSON_ERR_PARSING;
+    if (node) {
+        node->is_null = false;
+        node->type = STRING;
+        String tgt;
+        ret =
+            DArrayChar_initialize(
+                &tgt,
+                buf->size
+            );
+        if (ret) {
+            return JSON_ERR_PARSING;
+        }
+        ret =
+            DArrayChar_push_back_batch(
+                &tgt,
+                buf->data,
+                buf->size
+            );
+        if (ret) {
+            return JSON_ERR_PARSING;
+        }
+        DArrayChar_clear(buf);
+        node->data.str = tgt;
     }
-    ret =
-        DArrayChar_push_back_batch(
-            &tgt,
-            buf->data,
-            buf->size
-        );
-    if (ret) {
-        return JSON_ERR_PARSING;
-    }
-    DArrayChar_clear(buf);
-    node->data.str = tgt;
     return 0;
 }
 
@@ -184,6 +186,140 @@ void array_finalize(JSONNodePtr node) {
 }
 
 int handle_array(JSONNodePtr node, char **iter) {
+    String buf;
+    int ret = DArrayChar_initialize(&buf, 1000);
+    if (ret) {
+        return JSON_ERR_PARSING;
+    }
+    for (
+        ++(*iter);
+        **iter &&
+        (
+            **iter == ' ' ||
+            **iter == '\t' ||
+            **iter == '\n'
+        );
+        ++(*iter)
+    );
+    node->is_null = false;
+    node->type = ARRAY;
+    ret = DArrayJSONNodePtr_initialize(&node->data.array, 100);
+    if (ret) {
+        DArrayChar_finalize(&buf);
+        return JSON_ERR_PARSING;
+    }
+    bool comma_found = true;
+    for (; **iter && **iter != ']';) {
+        if (!comma_found) {
+            DArrayChar_finalize(&buf);
+            return JSON_ERR_ILL_FORMATED_DOCUMENT;
+        }
+        JSONNodePtr temp;
+        ret = JSONNodePtr_initialize(&temp);
+        if (ret) {
+            DArrayChar_finalize(&buf);
+            return JSON_ERR_PARSING;
+        }
+        switch (**iter) {
+        case 'n':
+            ret = handle_null(iter);
+            ++(*iter);
+            break;
+        case '"':
+            ret = handle_str(temp, &buf, iter);
+            ++(*iter);
+            break;
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+        case '-':
+            ret = handle_num(temp, &buf, iter);
+            break;
+        case '[':
+            ret = handle_array(temp, iter);
+            break;
+        default:
+            DArrayChar_finalize(&buf);
+            free(temp);
+            return JSON_ERR_ILL_FORMATED_DOCUMENT;
+        }
+        if (ret) {
+            free(temp);
+            break;
+        }
+        comma_found = false;
+        for (
+            ;
+            **iter &&
+            (
+                **iter == ' ' ||
+                **iter == '\t' ||
+                **iter == '\n' ||
+                **iter == ','
+            );
+            ++(*iter)) {
+            if (**iter == ',') {
+                if (comma_found) {
+                    DArrayChar_finalize(&buf);
+                    if (!temp->is_null) {
+                        switch (temp->type) {
+                        case STRING:
+                            DArrayChar_finalize(&temp->data.str);
+                            break;
+                        case NUMBER:
+                            break;
+                        case ARRAY:
+                            array_finalize(temp);
+                            break;
+                        case OBJECT:
+                            break;
+                        }
+                    }
+                    free(temp);
+                    return JSON_ERR_ILL_FORMATED_DOCUMENT;
+                }
+                comma_found = true;
+            }
+        }
+        ret = DArrayJSONNodePtr_push_back(&node->data.array, &temp);
+        if (ret) {
+            if (!temp->is_null) {
+                switch (temp->type) {
+                case STRING:
+                    DArrayChar_finalize(&temp->data.str);
+                    break;
+                case NUMBER:
+                    break;
+                case ARRAY:
+                    array_finalize(temp);
+                    break;
+                case OBJECT:
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    if (ret) {
+        DArrayChar_finalize(&buf);
+        return ret;
+    }
+    if (!**iter) {
+        DArrayChar_finalize(&buf);
+        return JSON_ERR_ILL_FORMATED_DOCUMENT;
+    }
+    DArrayChar_finalize(&buf);
+    return JSON_ERR_OK;
+}
+
+int handle_object(JSONNodePtr node, char **iter) {
     String buf;
     int ret = DArrayChar_initialize(&buf, 1000);
     if (ret) {
