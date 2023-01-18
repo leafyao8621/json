@@ -64,5 +64,6 @@ int main(void) {
     TEST(arr5)
     TEST(arr6)
     TEST(arr7)
+    TEST(obj1)
     return 0;
 }
