@@ -356,7 +356,6 @@ int handle_array(JSONNodePtr node, char **iter) {
 }
 
 int handle_object(JSONNodePtr node, char **iter) {
-    puts("call");
     String buf;
     int ret = DArrayChar_initialize(&buf, 1000);
     if (ret) {
