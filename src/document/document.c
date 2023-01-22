@@ -273,9 +273,11 @@ int handle_array(JSONNodePtr node, char **iter) {
             break;
         case '[':
             ret = handle_array(temp, iter);
+            ++(*iter);
             break;
         case '{':
             ret = handle_object(temp, iter);
+            ++(*iter);
             break;
         default:
             DArrayChar_finalize(&buf);
@@ -449,30 +451,22 @@ int handle_object(JSONNodePtr node, char **iter) {
             DArrayChar_finalize(&key_buf);
             return JSON_ERR_ILL_FORMATED_DOCUMENT;
         }
-        JSONNodePtr *value;
-        ret =
-            HashMapStringJSONNodePtr_fetch(
-                &node->data.object,
-                &key_buf,
-                &value
-            );
+        JSONNodePtr value;
         if (ret) {
             DArrayChar_finalize(&key_buf);
             break;
         }
-        ret = JSONNodePtr_initialize(value);
+        ret = JSONNodePtr_initialize(&value);
         if (ret) {
             DArrayChar_finalize(&buf);
             return JSON_ERR_PARSING;
         }
         switch (**iter) {
         case 'n':
-            ret = handle_null(iter);
-            ++(*iter);
+            ret = handle_null(iter);;
             break;
         case '"':
-            ret = handle_str(*value, &buf, iter);
-            ++(*iter);
+            ret = handle_str(value, &buf, iter);;
             break;
         case '0':
         case '1':
@@ -485,25 +479,33 @@ int handle_object(JSONNodePtr node, char **iter) {
         case '8':
         case '9':
         case '-':
-            ret = handle_num(*value, &buf, iter);
+            ret = handle_num(value, &buf, iter);
             break;
         case '[':
-            ret = handle_array(*value, iter);
+            ret = handle_array(value, iter);
             break;
         case '{':
-            ret = handle_object(*value, iter);
+            ret = handle_object(value, iter);
             break;
         default:
             DArrayChar_finalize(&buf);
             DArrayChar_finalize(&key_buf);
-            free(*value);
+            free(value);
             return JSON_ERR_ILL_FORMATED_DOCUMENT;
         }
         if (ret) {
             DArrayChar_finalize(&key_buf);
-            free(*value);
+            free(value);
             break;
         }
+        JSONNodePtr *ref;
+        ret =
+            HashMapStringJSONNodePtr_fetch(
+                &node->data.object,
+                &key_buf,
+                &ref
+            );
+        *ref = value;
         comma_found = false;
         for (
             ;
@@ -518,21 +520,22 @@ int handle_object(JSONNodePtr node, char **iter) {
             if (**iter == ',') {
                 if (comma_found) {
                     DArrayChar_finalize(&buf);
-                    if (!(**value).is_null) {
-                        switch ((**value).type) {
+                    if (!value->is_null) {
+                        switch (value->type) {
                         case STRING:
-                            DArrayChar_finalize(&(**value).data.str);
+                            DArrayChar_finalize(&value->data.str);
                             break;
                         case NUMBER:
                             break;
                         case ARRAY:
-                            array_finalize(*value);
+                            array_finalize(value);
                             break;
                         case OBJECT:
+                            object_finalize(value);
                             break;
                         }
                     }
-                    free(*value);
+                    free(value);
                     return JSON_ERR_ILL_FORMATED_DOCUMENT;
                 }
                 comma_found = true;
