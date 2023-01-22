@@ -356,6 +356,7 @@ int handle_array(JSONNodePtr node, char **iter) {
 }
 
 int handle_object(JSONNodePtr node, char **iter) {
+    puts("call");
     String buf;
     int ret = DArrayChar_initialize(&buf, 1000);
     if (ret) {
@@ -463,10 +464,12 @@ int handle_object(JSONNodePtr node, char **iter) {
         }
         switch (**iter) {
         case 'n':
-            ret = handle_null(iter);;
+            ret = handle_null(iter);
+            ++(*iter);
             break;
         case '"':
-            ret = handle_str(value, &buf, iter);;
+            ret = handle_str(value, &buf, iter);
+            ++(*iter);
             break;
         case '0':
         case '1':
@@ -483,9 +486,11 @@ int handle_object(JSONNodePtr node, char **iter) {
             break;
         case '[':
             ret = handle_array(value, iter);
+            ++(*iter);
             break;
         case '{':
             ret = handle_object(value, iter);
+            ++(*iter);
             break;
         default:
             DArrayChar_finalize(&buf);
