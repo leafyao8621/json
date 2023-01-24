@@ -47,6 +47,36 @@ int handle_null(char **iter) {
     return 0;
 }
 
+int handle_true(JSONNodePtr node, char **iter) {
+    int ret = JSON_ERR_OK;
+    if (memcmp(*iter, "true", 4)) {
+        return JSON_ERR_ILL_FORMATED_DOCUMENT;
+    }
+    if (ret) {
+        return JSON_ERR_PARSING;
+    }
+    node->is_null = false;
+    node->type = BOOLEAN;
+    node->data.boolean = true;
+    *iter += 3;
+    return 0;
+}
+
+int handle_false(JSONNodePtr node, char **iter) {
+    int ret = JSON_ERR_OK;
+    if (memcmp(*iter, "false", 5)) {
+        return JSON_ERR_ILL_FORMATED_DOCUMENT;
+    }
+    if (ret) {
+        return JSON_ERR_PARSING;
+    }
+    node->is_null = false;
+    node->type = BOOLEAN;
+    node->data.boolean = false;
+    *iter += 4;
+    return 0;
+}
+
 int handle_str(JSONNodePtr node, String *buf, char **iter) {
     int ret = JSON_ERR_OK;
     for (++(*iter); **iter && **iter != '"'; ++(*iter)) {
@@ -175,6 +205,8 @@ void array_finalize(JSONNodePtr node) {
                 break;
             case NUMBER:
                 break;
+            case BOOLEAN:
+                break;
             case ARRAY:
                 array_finalize(*iter);
                 break;
@@ -197,6 +229,8 @@ void object_finalize(JSONNodePtr node) {
                 DArrayChar_finalize(&iter->value->data.str);
                 break;
             case NUMBER:
+                break;
+            case BOOLEAN:
                 break;
             case ARRAY:
                 array_finalize(iter->value);
@@ -254,6 +288,14 @@ int handle_array(JSONNodePtr node, char **iter) {
             ret = handle_null(iter);
             ++(*iter);
             break;
+        case 't':
+            ret = handle_true(temp, iter);
+            ++(*iter);
+            break;
+        case 'f':
+            ret = handle_false(temp, iter);
+            ++(*iter);
+            break;
         case '"':
             ret = handle_str(temp, &buf, iter);
             ++(*iter);
@@ -309,6 +351,8 @@ int handle_array(JSONNodePtr node, char **iter) {
                             break;
                         case NUMBER:
                             break;
+                        case BOOLEAN:
+                            break;
                         case ARRAY:
                             array_finalize(temp);
                             break;
@@ -331,6 +375,8 @@ int handle_array(JSONNodePtr node, char **iter) {
                     DArrayChar_finalize(&temp->data.str);
                     break;
                 case NUMBER:
+                    break;
+                case BOOLEAN:
                     break;
                 case ARRAY:
                     array_finalize(temp);
@@ -466,6 +512,14 @@ int handle_object(JSONNodePtr node, char **iter) {
             ret = handle_null(iter);
             ++(*iter);
             break;
+        case 't':
+            ret = handle_true(value, iter);
+            ++(*iter);
+            break;
+        case 'f':
+            ret = handle_false(value, iter);
+            ++(*iter);
+            break;
         case '"':
             ret = handle_str(value, &buf, iter);
             ++(*iter);
@@ -531,6 +585,8 @@ int handle_object(JSONNodePtr node, char **iter) {
                             break;
                         case NUMBER:
                             break;
+                        case BOOLEAN:
+                            break;
                         case ARRAY:
                             array_finalize(value);
                             break;
@@ -582,6 +638,20 @@ int JSONDocument_parse(JSONDocument *document, char *str) {
                 return JSON_ERR_ILL_FORMATED_DOCUMENT;
             }
             ret = handle_null(&iter);
+            break;
+        case 't':
+            if (initialized) {
+                DArrayChar_finalize(&buf);
+                return JSON_ERR_ILL_FORMATED_DOCUMENT;
+            }
+            ret = handle_true(document->root, &iter);
+            break;
+        case 'f':
+            if (initialized) {
+                DArrayChar_finalize(&buf);
+                return JSON_ERR_ILL_FORMATED_DOCUMENT;
+            }
+            ret = handle_false(document->root, &iter);
             break;
         case '"':
             if (initialized) {
@@ -648,6 +718,8 @@ int JSONDocument_finalize(JSONDocument *document) {
             break;
         case NUMBER:
             break;
+        case BOOLEAN:
+            break;
         case ARRAY:
             array_finalize(document->root);
             break;
@@ -672,6 +744,23 @@ int null_serialize(String *buf, size_t offset) {
         }
     }
     return DArrayChar_push_back_batch(buf, "null", 4);
+}
+
+int bool_serialize(JSONNodePtr node, String *buf, size_t offset) {
+    int ret = 0;
+    char chr = ' ';
+    for (size_t i = 0; i < offset; ++i) {
+        ret = DArrayChar_push_back(buf, &chr);
+        if (ret) {
+            return JSON_ERR_SERIALIZE;
+        }
+    }
+    if (node->data.boolean) {
+        ret = DArrayChar_push_back_batch(buf, "true", 4);
+    } else {
+        ret = DArrayChar_push_back_batch(buf, "false", 5);
+    }
+    return ret;
 }
 
 int str_serialize(JSONNodePtr node, String *buf, size_t offset) {
@@ -850,6 +939,9 @@ int array_serialize(
             case NUMBER:
                 ret = num_serialize(*iter, buf, compact ? 0 : offset + 4);
                 break;
+            case BOOLEAN:
+                ret = bool_serialize(*iter, buf, compact ? 0 : offset + 4);
+                break;
             case ARRAY:
                 ret =
                     array_serialize(
@@ -959,6 +1051,9 @@ int object_serialize(
             case NUMBER:
                 ret = num_serialize(iter->value, buf, compact ? 0 : offset + 8);
                 break;
+            case BOOLEAN:
+                ret = bool_serialize(iter->value, buf, compact ? 0 : offset + 8);
+                break;
             case ARRAY:
                 ret =
                     array_serialize(
@@ -1042,6 +1137,9 @@ int JSONDocument_serialize(JSONDocument *document, String *buf, bool compact) {
             break;
         case NUMBER:
             ret = num_serialize(document->root, buf, 0);
+            break;
+        case BOOLEAN:
+            ret = bool_serialize(document->root, buf, 0);
             break;
         case ARRAY:
             ret = array_serialize(document->root, buf, compact, 0);

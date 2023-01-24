@@ -9,6 +9,7 @@ DEF_DARRAY(Char)
 typedef DArrayChar String;
 
 typedef enum JSONNodeType {
+    BOOLEAN,
     NUMBER,
     STRING,
     ARRAY,
@@ -23,6 +24,7 @@ typedef struct JSONNode {
     bool is_null;
     JSONNodeType type;
     union {
+        bool boolean;
         double number;
         String str;
         DArrayJSONNodePtr array;

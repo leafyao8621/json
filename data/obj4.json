@@ -1,0 +1,19 @@
+{
+    "success": true,
+    "data":
+        [
+            {
+                "a": 1,
+                "b": "xxx",
+                "c": false,
+                "d": null
+            },
+            {
+                "a": -1e3,
+                "b": "xxx\t\n",
+                "c": true,
+                "d": null
+            },
+            null
+        ]
+}
