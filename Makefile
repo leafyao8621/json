@@ -9,7 +9,7 @@ CFLAGS = -Wall -Wextra -Werror -pedantic -fPIC
 	$(CC) $(CFLAGS) -g -c $< -o $@
 
 $(LIB): $(OBJ)
-	$(CC) $(OBJ) -shared -o $(LIB)
+	$(CC) $(OBJ) -shared -o $(LIB) -lcontainers
 	cp src/document/document.h include/json
 	cp src/util/errcode.h include/json
 
