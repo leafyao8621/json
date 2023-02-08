@@ -6,7 +6,6 @@
 #include "document.h"
 #include "../util/errcode.h"
 
-DEF_DARRAY_FUNCTIONS(Char)
 DEF_DARRAY_FUNCTIONS(JSONNodePtr)
 DEF_HASHMAP_FUNCTIONS(String, JSONNodePtr)
 
