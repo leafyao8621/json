@@ -2,11 +2,8 @@
 #define JSON_DOCUMENT_DOCUMENT_H_
 
 #include <containers/darray.h>
+#include <containers/dstring.h>
 #include <containers/hashmap.h>
-
-typedef char Char;
-DEF_DARRAY(Char)
-typedef DArrayChar String;
 
 typedef enum JSONNodeType {
     BOOLEAN,
