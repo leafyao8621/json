@@ -24,3 +24,6 @@ clean:
 install:
 	@cp -r include/json ~/.local/include
 	@cp $(LIB) ~/.local/lib
+uninstall:
+	@rm -rf ~/.local/include/json
+	@rm -rf ~/.local/lib/$(LIB)
