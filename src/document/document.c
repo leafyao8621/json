@@ -251,7 +251,8 @@ int handle_array(JSONNodePtr node, char **iter) {
         (
             **iter == ' ' ||
             **iter == '\t' ||
-            **iter == '\n'
+            **iter == '\n' ||
+            **iter == '\r'
         );
         ++(*iter)
     );
@@ -329,6 +330,7 @@ int handle_array(JSONNodePtr node, char **iter) {
                 **iter == ' ' ||
                 **iter == '\t' ||
                 **iter == '\n' ||
+                **iter == '\r' ||
                 **iter == ','
             );
             ++(*iter)) {
@@ -404,7 +406,8 @@ int handle_object(JSONNodePtr node, char **iter) {
         (
             **iter == ' ' ||
             **iter == '\t' ||
-            **iter == '\n'
+            **iter == '\n' ||
+            **iter == '\r'
         );
         ++(*iter)
     );
@@ -455,6 +458,7 @@ int handle_object(JSONNodePtr node, char **iter) {
                 **iter == ' ' ||
                 **iter == '\t' ||
                 **iter == '\n' ||
+                **iter == '\r' ||
                 **iter == ':'
             );
             ++(*iter)) {
@@ -563,6 +567,7 @@ int handle_object(JSONNodePtr node, char **iter) {
                 **iter == ' ' ||
                 **iter == '\t' ||
                 **iter == '\n' ||
+                **iter == '\r' ||
                 **iter == ','
             );
             ++(*iter)) {
@@ -621,7 +626,14 @@ int JSONDocument_parse(JSONDocument *document, char *str) {
     }
     char *iter = str;
     bool initialized = false;
-    for (; *iter && *iter != ' ' && *iter != '\t' && *iter != '\n'; ++iter) {
+    for (
+        ;
+        *iter &&
+        *iter != ' ' &&
+        *iter != '\t' &&
+        *iter != '\n' &&
+        *iter != '\r';
+        ++iter) {
         switch (*iter) {
         case 'n':
             if (initialized) {
